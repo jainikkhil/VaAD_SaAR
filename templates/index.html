@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>संवाद सार</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #000000; /* Black background */
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+
+        .container {
+            max-width: 400px;
+            padding: 20px;
+            border-radius: 8px;
+            background-color: #0e546b;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            text-align: center;
+        }
+
+        h1 {
+            color: #d21a70; /* Blue color for SAAR */
+            margin-bottom: 20px;
+        }
+
+        .button {
+            display: inline-block;
+            padding: 12px 24px;
+            background-color: transparent; /* Transparent background */
+            color: #ffffff; /* White text color */
+            text-decoration: none;
+            border-radius: 6px;
+            transition: background-color 0.3s, color 0.3s;
+            cursor: pointer;
+            font-size: 16px;
+            border: 2px solid #e3b862; /* Blue outline */
+            margin: 5px;
+        }
+
+        .button:hover {
+            background-color: #0e7134; /* Blue background on hover */
+            color: #ffffff; /* White text color on hover */
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>SAAR</h1>
+        <button id="recordButton" class="button">Start Recording</button>
+        <button id="stopButton" class="button" disabled>Stop Recording</button>
+        <button id="sendButton" class="button">Send Summary to Mail</button>
+        <p id="status"></p>
+    </div>
+
+    <script src="https://cdn.rawgit.com/mattdiamond/Recorderjs/08e7abd9/dist/recorder.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+    <script>
+        let recorder;
+        let audioStream;
+        let chunks = [];
+
+        async function startRecording() {
+            navigator.mediaDevices.getUserMedia({ audio: true })
+                .then(function (stream) {
+                    audioStream = stream;
+                    const audioContext = new AudioContext();
+                    const input = audioContext.createMediaStreamSource(stream);
+                    recorder = new Recorder(input);
+                    recorder.record();
+                    $('#status').text('Recording...');
+                    $('#recordButton').prop('disabled', true);
+                    $('#stopButton').prop('disabled', false);
+                })
+                .catch(function (err) {
+                    console.error('Error recording: ' + err);
+                });
+        }
+
+        function stopRecording() {
+            recorder.stop();
+            audioStream.getAudioTracks()[0].stop();
+            recorder.exportWAV(uploadAudio);
+            $('#status').text('Recording stopped');
+            $('#recordButton').prop('disabled', false);
+            $('#stopButton').prop('disabled', true);
+        }
+
+        function uploadAudio(blob) {
+            const formData = new FormData();
+            formData.append('audio', blob, 'meeting_audio.wav');
+
+            $.ajax({
+                type: 'POST',
+                url: '/save_audio',
+                data: formData,
+                processData: false,
+                contentType: false,
+                success: function (response) {
+                    console.log(response);
+                    alert(response);
+                },
+                error: function (err) {
+                    console.error('Error uploading audio: ' + err);
+                }
+            });
+        }
+
+        $(document).ready(function () {
+            $('#recordButton').click(startRecording);
+            $('#stopButton').click(stopRecording);
+            $('#sendButton').click(function() {
+                $.ajax({
+                    type: 'POST',
+                    url: '/run_script',
+                    success: function (response) {
+                        console.log(response);
+                        alert(response);
+                    },
+                    error: function (err) {
+                        console.error('Error sending summary: ' + err);
+                    }
+                });
+            });
+        });
+    </script>
+</body>
+</html>
